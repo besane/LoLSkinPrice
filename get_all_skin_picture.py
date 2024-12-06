@@ -57,7 +57,7 @@ def get_skin_addresses(datas):
                     rgb_image = image.convert('RGB')
                     rgb_image.save(filename)
                     print('成功下载' + skin['name'] + '.jpg')
-    print(f'Failed download pictures[{len(download_fail_skins)}:', download_fail_skins)
+    print(f'Failed download pictures[{len(download_fail_skins)}]:', download_fail_skins)
 
 
 if __name__ == '__main__':
