@@ -1,5 +1,6 @@
 # -*- codeing = utf-8 -*-
 import time
+from os import write
 
 import requests
 import json, os
@@ -98,6 +99,7 @@ def get_skin_info_lists(hero_info_lists):
             skin_info_lists.append(skin)
     return skin_info_lists
 
+
 def download_skins(skin_info_lists):
     """
 
@@ -140,12 +142,105 @@ def download_skins(skin_info_lists):
     return len(download_fail_skins)
 
 
+def init_db():
+    conn = sqlite3.connect('lol.db')
+    cur = conn.cursor()
+    cur.execute("""CREATE TABLE hero
+                (heroId                 INT PRIMARY KEY     NOT NULL,
+                 name                   VARCHAR             NOT NULL,
+                 alias                  VARCHAR             NOT NULL,
+                 title                  VARCHAR             NOT NULL,
+                 roles                  VARCHAR                     ,
+                 isWeekFree             CHAR                        ,
+                 attack                 INT                 NOT NULL,
+                 defense                INT                 NOT NULL,
+                 magic                  INT                 NOT NULL,
+                 difficulty             INT                 NOT NULL,
+                 selectAudio            VARCHAR                     ,
+                 banAudio               VARCHAR                     ,
+                 isARAMWeekFree         INT                         ,
+                 isPermanentWeekFree    INT                         ,
+                 changeLabel            VARCHAR                     ,
+                 goldPrice              VARCHAR                     ,
+                 couponPrice            VARCHAR                     ,
+                 camp                   VARCHAR                     ,
+                 campId                 VARCHAR                     ,
+                 keywords               VARCHAR                     ,
+                 instance_id            VARCHAR                     );""")
+
+    cur.execute("""CREATE TABLE skin
+                    (skinId                 INT PRIMARY KEY     NOT NULL,
+                     heroId                 INT                 NOT NULL,
+                     heroName               VARCHAR             NOT NULL,
+                     heroTitle              VARCHAR             NOT NULL,
+                     name                   VARCHAR                     ,
+                     chromas                CHAR                        ,
+                     chromasBelongId        INT                         ,
+                     isBase                 INT                 NOT NULL,
+                     emblemsName            INT                         ,
+                     description            VARCHAR                     ,
+                     mainImg                VARCHAR                     ,
+                     iconImg                VARCHAR                     ,
+                     loadingImg             VARCHAR                     ,
+                     videoImg               VARCHAR                     ,
+                     sourceImg              VARCHAR                     ,
+                     vedioPath              VARCHAR                     ,
+                     suitType               INT                         ,
+                     publishTime            DATE                        ,
+                     chromaImg              VARCHAR                     ,
+                     centerImg              VARCHAR                     ,
+                     instanceId             VARCHAR                     );""")
+
+    conn.commit()
+    conn.close()
+
+
+def write_hero_info_into_db(hero_info_lists):
+    conn = sqlite3.connect('lol.db')
+    cur = conn.cursor()
+    cur.execute('delete from hero')
+    conn.commit()
+
+    for hero_info in hero_info_lists:
+        cur.execute(f'''INSERT INTO hero VALUES
+                    (
+                    "{int(hero_info['heroId'])}",
+                    "{hero_info['name']}",
+                    "{hero_info['alias']}",
+                    "{hero_info['title']}",
+                    "{hero_info['roles']}",
+                    "{hero_info['isWeekFree']}",              
+                    "{int(hero_info['attack'])}",
+                    "{int(hero_info['defense'])}",
+                    "{int(hero_info['magic'])}",
+                    "{int(hero_info['difficulty'])}", 
+                    "{hero_info['selectAudio']}",
+                    "{hero_info['banAudio']}",
+                    "{int(hero_info['isARAMweekfree'])}",
+                    "{int(hero_info['ispermanentweekfree'])}",
+                    "{hero_info['changeLabel']}",
+                    "{hero_info['goldPrice']}",
+                    "{hero_info['couponPrice']}",
+                    "{hero_info['camp']}",
+                    "{hero_info['campId']}",
+                    "{hero_info['keywords']}",
+                    "{hero_info['instance_id']}"
+                    )''')
+        conn.commit()
+
+    conn.close()
+
+
 if __name__ == '__main__':
     print('preparing...')
     start_time = time.time()
     hero_lists = get_hero_info_lists('https://game.gtimg.cn/images/lol/act/img/js/heroList/hero_list.js?ts=2889125')
-    skin_lists = get_skin_info_lists(hero_lists)
-    print(f'get skin information finish in {time.time() - start_time} s \n Start downloading skin picture')
-    start_time = time.time()
-    download_skins(skin_lists)
-    print(f'download skin picture finish in {time.time() - start_time} s')
+    print(hero_lists)
+    write_hero_info_into_db(hero_lists)
+    # skin_lists = get_skin_info_lists(hero_lists)
+    # print(f'get skin information finish in {time.time() - start_time} s \n Start downloading skin picture')
+    # start_time = time.time()
+    # download_skins(skin_lists)
+    # print(f'download skin picture finish in {time.time() - start_time} s')
+
+    # init_db()
