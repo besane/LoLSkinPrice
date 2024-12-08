@@ -177,15 +177,14 @@ def init_db():
                      chromas                CHAR                        ,
                      chromasBelongId        INT                         ,
                      isBase                 INT                 NOT NULL,
-                     emblemsName            INT                         ,
-                     description            VARCHAR                     ,
+                     emblemsName            VARCHAR                     ,
                      mainImg                VARCHAR                     ,
                      iconImg                VARCHAR                     ,
                      loadingImg             VARCHAR                     ,
                      videoImg               VARCHAR                     ,
                      sourceImg              VARCHAR                     ,
                      vedioPath              VARCHAR                     ,
-                     suitType               INT                         ,
+                     suitType               VARCHAR                     ,
                      publishTime            DATE                        ,
                      chromaImg              VARCHAR                     ,
                      centerImg              VARCHAR                     ,
@@ -231,12 +230,50 @@ def write_hero_info_into_db(hero_info_lists):
     conn.close()
 
 
+def write_skin_info_into_db(skin_info_lists):
+    conn = sqlite3.connect('lol.db')
+    cur = conn.cursor()
+    cur.execute('delete from skin')
+    conn.commit()
+
+    for skin_info in skin_info_lists:
+        print(skin_info)
+        cur.execute(f'''INSERT INTO skin VALUES
+                        (
+                        "{int(skin_info['skinId'])}",
+                        "{int(skin_info['heroId'])}",
+                        "{skin_info['heroName']}",
+                        "{skin_info['heroTitle']}",
+                        "{skin_info['name'].replace('"', '')}",
+                        "{skin_info['chromas']}",              
+                        "{int(skin_info['chromasBelongId'])}",
+                        "{int(skin_info['isBase'])}",
+                        "{skin_info['emblemsName']}",
+                        "{skin_info['mainImg']}",
+                        "{skin_info['iconImg']}",
+                        "{skin_info['loadingImg']}",
+                        "{skin_info['videoImg']}",
+                        "{skin_info['sourceImg']}",
+                        "{skin_info['vedioPath']}",
+                        "{skin_info['suitType']}",
+                        "{skin_info['publishTime']}",
+                        "{skin_info['chromaImg']}",
+                        "{skin_info['centerImg']}",
+                        "{skin_info['instanceId']}"
+                        )''')
+        conn.commit()
+
+    conn.close()
+
+
 if __name__ == '__main__':
     print('preparing...')
     start_time = time.time()
     hero_lists = get_hero_info_lists('https://game.gtimg.cn/images/lol/act/img/js/heroList/hero_list.js?ts=2889125')
-    print(hero_lists)
+    skin_lists = get_skin_info_lists(hero_lists)
+    init_db()
     write_hero_info_into_db(hero_lists)
+    write_skin_info_into_db(skin_lists)
     # skin_lists = get_skin_info_lists(hero_lists)
     # print(f'get skin information finish in {time.time() - start_time} s \n Start downloading skin picture')
     # start_time = time.time()
