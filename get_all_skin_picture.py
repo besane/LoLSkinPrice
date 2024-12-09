@@ -1,5 +1,7 @@
 # -*- codeing = utf-8 -*-
+import re
 import time
+from email.policy import strict
 from os import write
 
 import requests
@@ -17,7 +19,13 @@ def translate_html_to_dict(url):
     response = requests.get(url, headers=headers, timeout=10)
     response.encoding = 'utf-8'
 
-    datas = json.loads(response.text) # 将html的字符串转化为字典
+    s = response.text
+    s = re.sub(r'^\s*[^{\[]+', '', s)
+    s = re.sub(r'[^}\]]+\s*$', '', s)
+    # print(s)
+
+    datas = json.loads(s) # 将html的字符串转化为字典
+    # print(datas)
     return datas
 
 
@@ -267,13 +275,18 @@ def write_skin_info_into_db(skin_info_lists):
 
 
 if __name__ == '__main__':
-    print('preparing...')
-    start_time = time.time()
-    hero_lists = get_hero_info_lists('https://game.gtimg.cn/images/lol/act/img/js/heroList/hero_list.js?ts=2889125')
-    skin_lists = get_skin_info_lists(hero_lists)
-    init_db()
-    write_hero_info_into_db(hero_lists)
-    write_skin_info_into_db(skin_lists)
+    # print('preparing...')
+    # start_time = time.time()
+    # hero_lists = get_hero_info_lists('https://game.gtimg.cn/images/lol/act/img/js/heroList/hero_list.js?ts=2889125')
+    # skin_lists = get_skin_info_lists(hero_lists)
+    # init_db()
+    # write_hero_info_into_db(hero_lists)
+    # write_skin_info_into_db(skin_lists)
+
+    daoju = translate_html_to_dict('https://djcapp.game.qq.com/daoju/igw/main/?_service=app.goods.list.sort&order_field=time&sort_type=desc&page_num=1&page=1&page_size=1912&cate_id=17&view=biz_portal&appSource=pc&_biz_code=lol&appVersion=140&_app_id=1003&_jsvar=oListGoods&acctype=null&openid=null&appid=null&access_token=null&_=1733711005461')
+    for skins in daoju['data']['list']:
+        print(skins['sGoodsName'] + ' ' + str(skins['iPrice']) + ' ' + str(skins['iOrgPrice']))
+    print(len(daoju['data']['list']))
     # skin_lists = get_skin_info_lists(hero_lists)
     # print(f'get skin information finish in {time.time() - start_time} s \n Start downloading skin picture')
     # start_time = time.time()
