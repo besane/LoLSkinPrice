@@ -1,8 +1,74 @@
+import copy
+import time
+
 from get_all_skin_picture import translate_html_to_dict
 import re
 import requests
 import json
 import sqlite3
+
+hero_list = {
+    '辛吉德': ['炼金男爵', '哨兵'],
+    '烈娜塔': ['炼金男爵', '先知'],
+    '希尔科': ['炼金男爵', '统领'],
+    '卡蜜尔': ['执法官', '伏击专家'],
+    '布里茨': ['海克斯机械', '统领'],
+    '蔚': ['执法官', '搏击手'],
+    '凯特琳': ['执法官', '狙神'],
+    '艾克': ['野火帮', '极客', '伏击专家'],
+    '阿木木': ['海克斯机械', '监察'],
+    '玛尔扎哈': ['海克斯机械', '先知'],
+    '蒙多医生': ['试验品', '统领'],
+    '图奇': ['试验品', '狙神'],
+    '阿卡丽': ['蓝发小队', '迅击战士'],
+    '瑟提': ['蓝发小队', '格斗家'],
+    '伊泽瑞尔': ['皮城学院', '蓝发小队', '炮手'],
+    '俄洛伊': ['蓝发小队', '哨兵'],
+    '德莱文': ['铁血征服者', '搏击手'],
+    '芮尔': ['铁血征服者', '哨兵', '先知'],
+    '卡西奥佩娅': ['黑色玫瑰', '统领'],
+    '弗拉基米尔': ['黑色玫瑰', '监察', '法师'],
+    '伊莉丝': ['黑色玫瑰', '双形战士', '格斗家'],
+    '乐芙兰': ['黑色玫瑰', '法师'],
+    '黑默丁格': ['皮城学院', '先知'],
+    '杰斯': ['皮城学院', '双形战士'],
+    '特朗德尔': ['极客', '格斗家'],
+    '吉格斯': ['极客', '统领'],
+    '兰博': ['机械公敌', '极客', '哨兵'],
+    '史密奇': ['炼金男爵', '伏击专家'],
+    '塞薇卡': ['百变铁手', '炼金男爵', '搏击手'],
+    '荏妮': ['炼金男爵', '格斗家'],
+    '洛里斯': ['执法官', '哨兵'],
+    '斯特卜': ['执法官', '格斗家'],
+    '麦迪': ['执法官', '狙神'],
+    '爆爆': ['家人', '极客', '伏击专家'],
+    '范德尔': ['家人', '监察'],
+    '刀疤': ['野火帮', '监察'],
+    '努努和威朗普': ['试验品', '格斗家', '先知'],
+    '金克丝': ['蓝发小队', '伏击专家'],
+    '泽丽': ['野火帮', '狙神'],
+    '蔚奥莱': ['家人', '搏击手'],
+    '娜美': ['外交官', '法师'],
+    '库奇': ['极客', '炮手'],
+    '盖伦': ['外交官', '监察'],
+    '薇古丝': ['蓝发小队', '先知'],
+    '魔腾': ['海克斯机械', '迅击战士'],
+    '德莱厄斯': ['铁血征服者', '监察'],
+    '艾瑞莉娅': ['蓝发小队', '哨兵'],
+    '安蓓萨': ['外交官', '铁血征服者', '迅击战士'],
+    '婕拉': ['试验品', '法师'],
+    '普朗克': ['极客', '双形战士', '搏击手'],
+    '蕾欧娜': ['皮城学院', '哨兵'],
+    '克格莫': ['海克斯机械', '狙神'],
+    '崔斯特': ['执法官', '迅击战士'],
+    '拉克丝': ['皮城学院', '法师'],
+    '莫德凯撒': ['铁血征服者', '统领'],
+    '莫甘娜': ['黑色玫瑰', '先知'],
+    '崔丝塔娜': ['外交官', '炮手'],
+    '斯维因': ['铁血征服者', '双形战士', '法师'],
+    '厄加特': ['试验品', '搏击手', '炮手'],
+    '佐伊': ['蓝发小队', '法师'],
+}
 
 def get_all_champion_info(url):
     """
@@ -84,7 +150,7 @@ def get_race_and_job_levels():
     return data
 
 
-def get_fetters_score(champions, levels):
+def get_fetters_score_with_db(champions, fetter_levels):
     conn = sqlite3.connect('tft_champions.db')
     cursor = conn.cursor()
 
@@ -105,7 +171,7 @@ def get_fetters_score(champions, levels):
 
     # 计算已激活的羁绊总数以及统计哪些羁绊已激活
     for fetter in fetters.keys():
-        for level in levels[fetter]:
+        for level in fetter_levels[fetter]:
             if fetters[fetter] >= level:
                 activated_fetters[fetter] = level
     score = sum(activated_fetters.values())
@@ -114,6 +180,68 @@ def get_fetters_score(champions, levels):
     conn.close()
 
     return score, activated_fetters
+
+
+def get_fetters_score_locally(champions, fetter_levels):
+    fetters = {}  # 所有羁绊
+    activated_fetters = {}  # 已激活的羁绊
+
+    # 计算羁绊数量
+    for champion in champions:
+        for fetter in hero_list[champion]:
+            fetters[fetter] = fetters.get(fetter, 0) + 1
+
+    # 计算已激活的羁绊总数以及统计哪些羁绊已激活
+    for fetter in fetters.keys():
+        for level in fetter_levels[fetter]:
+            if fetters[fetter] >= level:
+                activated_fetters[fetter] = level
+    score = sum(activated_fetters.values())
+
+    return score, activated_fetters
+
+max_score = 0
+champions_list = []
+final_fetters = {}
+fetter_levels = get_race_and_job_levels()
+
+def get_max_fetter(level, heroes, **visited):
+    # TODO: 剪枝、增加级别控制、增加外交官处理
+    global max_score
+    global champions_list
+    global fetter_levels
+    global final_fetters
+
+    if len(heroes) == level:
+        # print(heroes)
+        score, _ = get_fetters_score_locally(heroes, fetter_levels)
+        # print(heroes, _, score)
+        if score > max_score:
+            max_score = score
+            champions_list = heroes
+            final_fetters = _
+        return
+
+    # 计算当前羁绊
+    fetters = set()
+    for hero in heroes:
+        for fetter in hero_list[hero]:
+            fetters.add(fetter)
+
+    # 获取可以和当前英雄凑羁绊的英雄
+    new_heroes = set()
+    for fetter in fetters:
+        for hero in hero_list:
+            if (fetter in hero_list[hero]) and (hero not in heroes) and not visited[hero]:
+                new_heroes.add(hero)
+
+    for new_hero in new_heroes:
+        visited[new_hero] = True
+        hero_tmp = copy.deepcopy(heroes)
+        hero_tmp.append(new_hero)
+        get_max_fetter(level, hero_tmp, **visited)
+
+    return
 
 
 def init_tft_db():
@@ -220,14 +348,30 @@ def write_champion_info_into_db(champion_info):
 
 
 if __name__ == '__main__':
-    levels = get_race_and_job_levels()
-    # score, activated_fetters = get_fetters_score(['克格莫', '刀疤', '泽丽', '盖伦', '德莱厄斯', '阿木木', '范德尔', '弗拉基米尔'], levels)
-    score, activated_fetters = get_fetters_score(['黑默丁格', '盖伦', '伊莉丝', '玛尔扎哈', '杰斯', '乐芙兰', '弗拉基米尔', '努努和威朗普', '莫甘娜'], levels)
-    print(score, activated_fetters)
+    # levels = get_race_and_job_levels()
+    # print(levels)
+    visited_flag = {}
+    for all_hero in hero_list:
+        visited_flag[all_hero] = False
+    start_time = time.time()
+    for all_hero in hero_list:
+        visited_flag[all_hero] = True
+        # print(visited_flag)
+        get_max_fetter(6, [all_hero], **visited_flag)
+    print(time.time() - start_time)
+    print(max_score, champions_list, final_fetters)
+    # # score, activated_fetters = get_fetters_score(['克格莫', '刀疤', '泽丽', '盖伦', '德莱厄斯', '阿木木', '范德尔', '弗拉基米尔'], levels)
+    # score, activated_fetters = get_fetters_score(['黑默丁格', '盖伦', '伊莉丝', '玛尔扎哈', '杰斯', '乐芙兰', '弗拉基米尔', '努努和威朗普', '莫甘娜'], levels)
+    # print(score, activated_fetters)
+
+    # get_max_fetter(3)
 
     # init_tft_db()
     # all_champion_info = get_all_champion_info('https://game.gtimg.cn/images/lol/act/img/tft/js/chess.js')
-    # write_champion_info_into_db(all_champion_info)
-    # for champion in all_champion_info['data']:
-    #     print(champion)
-    #     print(str(champion['chessId']) + ' ' + champion['title'] + ' ' + champion['displayName'] + ' ' + str(champion['price']) + ' ' + champion['races'] + ' ' + champion['jobs'])
+    # # write_champion_info_into_db(all_champion_info)
+    # for champion in all_champion_info:
+    #     if champion['races'] == "":
+    #         continue
+    #     print("'" + champion['displayName'] + "': ['" + champion['races'] + "','" + champion['jobs'] + "'],")
+
+    # get_max_fetter(3, [], [], [])
