@@ -72,6 +72,50 @@ def get_all_champion_info(url):
     return champion_info['data']
 
 
+def get_race_and_job_levels():
+    data = {}
+    race_info = translate_html_to_dict('https://game.gtimg.cn/images/lol/act/img/tft/js/race.js')['data']
+    job_info = translate_html_to_dict('https://game.gtimg.cn/images/lol/act/img/tft/js/job.js')['data']
+
+    for info in race_info:
+        data[info['name']] = [int(key) for key in info['level'].keys()]
+    for info in job_info:
+        data[info['name']] = [int(key) for key in info['level'].keys()]
+    return data
+
+
+def get_fetters_score(champions, levels):
+    conn = sqlite3.connect('tft_champions.db')
+    cursor = conn.cursor()
+
+    fetters = {} # 所有羁绊
+    activated_fetters = {} # 已激活的羁绊
+
+    # 计算羁绊数量
+    for champion in champions:
+        cursor.execute(f'SELECT races, jobs FROM Champions WHERE displayName="{champion}"')
+        race_and_job = cursor.fetchall()
+        if not race_and_job:
+            print(f'WARNING: There is no such data[{champion}]')
+            continue
+        for fetter in race_and_job[0]:
+            fetter = fetter.split(',')
+            for fet in fetter:
+                fetters[fet] = fetters.get(fet, 0) + 1
+
+    # 计算已激活的羁绊总数以及统计哪些羁绊已激活
+    for fetter in fetters.keys():
+        for level in levels[fetter]:
+            if fetters[fetter] >= level:
+                activated_fetters[fetter] = level
+    score = sum(activated_fetters.values())
+
+    cursor.close()
+    conn.close()
+
+    return score, activated_fetters
+
+
 def init_tft_db():
 
     # 连接到SQLite数据库
@@ -176,10 +220,14 @@ def write_champion_info_into_db(champion_info):
 
 
 if __name__ == '__main__':
-    all_champion_info = get_all_champion_info('https://game.gtimg.cn/images/lol/act/img/tft/js/chess.js')
-    print(len(all_champion_info))
-    init_tft_db()
-    write_champion_info_into_db(all_champion_info)
-    # for champion in champion_info['data']:
+    levels = get_race_and_job_levels()
+    # score, activated_fetters = get_fetters_score(['克格莫', '刀疤', '泽丽', '盖伦', '德莱厄斯', '阿木木', '范德尔', '弗拉基米尔'], levels)
+    score, activated_fetters = get_fetters_score(['黑默丁格', '盖伦', '伊莉丝', '玛尔扎哈', '杰斯', '乐芙兰', '弗拉基米尔', '努努和威朗普', '莫甘娜'], levels)
+    print(score, activated_fetters)
+
+    # init_tft_db()
+    # all_champion_info = get_all_champion_info('https://game.gtimg.cn/images/lol/act/img/tft/js/chess.js')
+    # write_champion_info_into_db(all_champion_info)
+    # for champion in all_champion_info['data']:
     #     print(champion)
-        # print(str(champion['chessId']) + ' ' + champion['title'] + ' ' + champion['displayName'] + ' ' + str(champion['price']) + ' ' + champion['races'] + ' ' + champion['jobs'])
+    #     print(str(champion['chessId']) + ' ' + champion['title'] + ' ' + champion['displayName'] + ' ' + str(champion['price']) + ' ' + champion['races'] + ' ' + champion['jobs'])
